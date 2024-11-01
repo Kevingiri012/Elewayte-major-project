@@ -1,0 +1,99 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import GridSearchCV
+
+data = pd.read_csv('adult.csv')
+
+
+data.fillna(method='ffill', inplace=True)
+
+
+data = pd.get_dummies(data, drop_first=True)
+
+
+X = data.drop('income', axis=1)
+y = data['income']
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+svm_model = SVC()
+rf_model = RandomForestClassifier()
+lr_model = LogisticRegression()
+
+
+svm_model.fit(X_train, y_train)
+rf_model.fit(X_train, y_train)
+lr_model.fit(X_train, y_train)
+
+
+svm_pred = svm_model.predict(X_test)
+rf_pred = rf_model.predict(X_test)
+lr_pred = lr_model.predict(X_test)
+
+models = [svm_model, rf_model, lr_model]
+model_names = ['SVM', 'Random Forest', 'Logistic Regression']
+
+for model, name in zip(models, model_names):
+    print(f"Model: {name}")
+    print("Accuracy Score:", accuracy_score(y_test, model.predict(X_test)))
+    print("Classification Report:\n", classification_report(y_test, model.predict(X_test)))
+    print("Confusion Matrix:\n", confusion_matrix(y_test, model.predict(X_test)))
+    sns.heatmap(confusion_matrix(y_test, model.predict(X_test)), annot=True, fmt='d')
+    plt.title(f"Confusion Matrix for {name}")
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.show()
+
+
+accuracies = [accuracy_score(y_test, model.predict(X_test)) for model in models]
+plt.bar(model_names, accuracies)
+plt.xlabel('Model')
+plt.ylabel('Accuracy')
+plt.title('Model Comparison')
+plt.show()
+
+
+param_grid_svm = {'C': [0.1, 1, 10], 'kernel': ['linear', 'rbf']}
+param_grid_rf = {'n_estimators': [100, 200, 300], 'max_depth': [None, 5, 10]}
+param_grid_lr = {'C': [0.1, 1, 10], 'penalty': ['l1', 'l2']}
+
+
+grid_search_svm = GridSearchCV(svm_model, param_grid_svm, cv=5)
+grid_search_rf = GridSearchCV(rf_model, param_grid_rf, cv=5)
+grid_search_lr = GridSearchCV(lr_model, param_grid_lr, cv=5)
+
+
+grid_search_svm.fit(X_train, y_train)
+grid_search_rf.fit(X_train, y_train)
+grid_search_lr.fit(X_train, y_train)
+
+
+print("Best parameters for SVM:", grid_search_svm.best_params_)
+print("Best score for SVM:", grid_search_svm.best_score_)
+print("Best parameters for Random Forest:", grid_search_rf.best_params_)
+print("Best score for Random Forest:", grid_search_rf.best_score_)
+print("Best parameters for Logistic Regression:", grid_search_lr.best_params_)
+print("Best score for Logistic Regression:", grid_search_lr.best_score_)
+
+
+sample_input = pd.DataFrame(X_test[0]).transpose()
+
+
+predicted_income = rf_model.predict(sample_input)  # Use the best model
+
+print("Predicted Income:", predicted_income[0])
